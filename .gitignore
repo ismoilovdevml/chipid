@@ -1,0 +1,20 @@
+.gradle/
+.kotlin/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Fetched at build time (see app/build.gradle.kts, fetchMasterList); not redistributed.
+app/src/main/assets/masterlist.ml
+
+# Chip exports must never be committed.
+export/
+*.bin

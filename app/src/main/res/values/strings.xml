@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common -->
+    <string name="back">Back</string>
+    <string name="close">Close</string>
+    <string name="cancel">Cancel</string>
+    <string name="continue_">Continue</string>
+    <string name="try_again">Try again</string>
+    <string name="loading">Loading…</string>
+    <string name="step_of">Step %1$d of %2$d</string>
+    <string name="never_leaves">Your data never leaves this phone</string>
+
+    <!-- Home -->
+    <string name="home_title">Which document are we checking?</string>
+    <string name="home_subtitle">ChipID reads the chip and confirms the document is genuine.</string>
+    <string name="doc_passport">Biometric passport</string>
+    <string name="doc_passport_sub">Scan the photo page</string>
+    <string name="doc_id">ID card</string>
+    <string name="doc_id_sub">Scan the back or use the CAN</string>
+    <string name="how_it_works">How it works</string>
+    <string name="how_1">Scan the document</string>
+    <string name="how_2">Hold your phone to the chip</string>
+    <string name="how_3">See the verified result</string>
+    <string name="start_scanning">Start scanning</string>
+
+    <!-- Scan -->
+    <string name="torch">Toggle torch</string>
+    <string name="scan_title_passport">Fit the photo page in the frame</string>
+    <string name="scan_sub_passport">The two lines at the bottom (MRZ) must be sharp</string>
+    <string name="scan_title_id">Fit the back of the card in the frame</string>
+    <string name="scan_sub_id">The three lines of text (MRZ) must be sharp</string>
+    <string name="scan_looking">Looking for the MRZ…</string>
+    <string name="scan_reading">MRZ found — reading…</string>
+    <string name="scan_found">MRZ read and check digits valid</string>
+    <string name="scan_continue">Correct — continue</string>
+    <string name="scan_again">Scan again</string>
+    <string name="enter_manually">Enter manually</string>
+    <string name="tile_number">Number</string>
+    <string name="tile_born">Born</string>
+    <string name="tile_expires">Expires</string>
+    <string name="camera_needed">ChipID needs the camera to read the MRZ, the lines of text that unlock the chip.</string>
+    <string name="camera_local">Frames are recognised on the phone and never saved or sent.</string>
+    <string name="allow_camera">Allow camera</string>
+
+    <!-- Manual -->
+    <string name="open_camera">Open camera</string>
+    <string name="mode_can">CAN</string>
+    <string name="mode_mrz">MRZ details</string>
+    <string name="hint_passport">Everything is on the photo page, and also in the two lines inside the blue frame.</string>
+    <string name="hint_id_mrz">Everything is in the three lines on the back of the card.</string>
+    <string name="hint_can">The CAN is a 6-digit number printed on the front of many ID cards.</string>
+    <string name="field_passport_number">Passport number</string>
+    <string name="field_document_number">Document number</string>
+    <string name="helper_doc">Letters and digits, for example FA1234567</string>
+    <string name="field_dob">Date of birth</string>
+    <string name="field_expiry">Date of expiry</string>
+    <string name="helper_dates">Digits only — the dots are added for you</string>
+    <string name="err_dob">That date of birth is not possible</string>
+    <string name="err_date">That date does not exist</string>
+    <string name="field_can">Card access number (CAN)</string>
+    <string name="helper_can">6 digits</string>
+    <string name="key_note">These details are the key that unlocks the chip. They stay in memory and are never saved.</string>
+
+    <!-- NFC -->
+    <string name="nfc_hold_doc">Hold the document to your phone</string>
+    <string name="nfc_hold_still">Don\'t move your phone</string>
+    <string name="nfc_failed">Reading stopped</string>
+    <string name="nfc_sub_passport">Rest the back of your phone on the passport cover. The chip is usually in the back cover or the photo page.</string>
+    <string name="nfc_sub_id">Lay the card flat against the middle of the back of your phone.</string>
+    <string name="nfc_off">NFC is turned off. Turn it on to read the chip.</string>
+    <string name="open_nfc_settings">Open NFC settings</string>
+    <string name="reading_data">Reading data</string>
+    <string name="stage_found">Chip found</string>
+    <string name="stage_channel">Secure channel opened</string>
+    <string name="stage_data">Personal data and photo</string>
+    <string name="stage_verify">Digital signature check</string>
+    <string name="where_is_chip">Where is the chip? Help</string>
+    <string name="where_is_chip_title">Finding the chip</string>
+    <string name="got_it">Got it</string>
+    <string name="help_1">Remove the phone case</string>
+    <string name="help_1_sub">Thick or magnetic cases block NFC.</string>
+    <string name="help_2">Aim the middle of the phone</string>
+    <string name="help_2_sub">The NFC antenna sits around the centre of the back, below the cameras.</string>
+    <string name="help_3">Try both covers, then the photo page</string>
+    <string name="help_3_sub">Passport chips are in the back cover, the front cover or the plastic data page, depending on the country.</string>
+    <string name="help_4">Hold still for 10 seconds</string>
+    <string name="help_4_sub">The photo is the largest file. Moving the document breaks the connection; slide slowly until it vibrates, then stop.</string>
+    <string name="help_id">ID cards: lay the card flat and keep it still. If the chip refuses the key, check the CAN or switch to the MRZ details.</string>
+
+    <!-- Result -->
+    <string name="result">Result</string>
+    <string name="verdict_pass">Document is genuine</string>
+    <string name="verdict_pass_sub">Chip data signed by the issuing authority of %1$s</string>
+    <string name="verdict_unknown">Signature intact, issuer not verified</string>
+    <string name="verdict_unknown_sub">No trusted certificate for %1$s in the master list</string>
+    <string name="verdict_fail">Verification failed</string>
+    <string name="verdict_fail_sub">The chip data or its signature did not check out</string>
+    <string name="name">Name</string>
+    <string name="nationality">Nationality: %1$s</string>
+    <string name="show_number">Show document number</string>
+    <string name="chip_photo">Photo stored on the chip</string>
+    <string name="valid_until">Valid until</string>
+    <string name="check_signature">Data signature intact (Passive Auth)</string>
+    <string name="check_clone_ca">Chip is not a copy (Chip Auth)</string>
+    <string name="check_clone_aa">Chip is not a copy (Active Auth)</string>
+    <string name="check_clone_na">Clone check not offered by this chip</string>
+    <string name="check_chain">Chain of trust: CSCA (%1$s)</string>
+    <string name="new_check">New check</string>
+    <string name="technical_details">Technical details (DG, SOD, certificate)</string>
+    <string name="technical_title">Technical details</string>
+    <string name="export_raw">Export raw files</string>
+    <string name="delete_exports">Delete exported files</string>
+    <string name="exported_to">Saved to %1$s</string>
+    <string name="exports_deleted">All exported files deleted</string>
+
+    <!-- About -->
+    <string name="about_title">About &amp; privacy</string>
+    <string name="about_privacy">Privacy</string>
+    <string name="priv_network_ok">No network access: the app has no INTERNET permission, so Android blocks every connection.</string>
+    <string name="priv_network_bad">Warning: this build requests network access.</string>
+    <string name="priv_camera">Camera frames are recognised on the phone and never stored.</string>
+    <string name="priv_memory">Chip data stays in memory and is exported only when you ask.</string>
+    <string name="priv_backup">Excluded from cloud backup and device transfer.</string>
+    <string name="about_trust">Trust list</string>
+    <string name="trust_summary">%1$d country signing certificates (CSCA) from %2$d countries.</string>
+    <string name="trust_add">Add more anchors by copying .ml, .der, .cer, .crt or .pem files to Android/data/com.ismoilovdev.chipid/files/csca/.</string>
+    <string name="about_how">How verification works</string>
+    <string name="about_how_text">PACE or BAC opens an encrypted channel with the key from the MRZ or CAN. Passive Authentication checks every data group against the signed security object (SOD) and the signer certificate against the issuing country\'s CSCA. Chip or Active Authentication proves the chip holds a private key that cannot be copied. Standards: ICAO Doc 9303, BSI TR-03110.</string>
+    <string name="about_licenses">Open source</string>
+    <string name="about_licenses_text">JMRTD (LGPL 3.0), SCUBA (LGPL 3.0), Bouncy Castle (MIT), Inter and JetBrains Mono (SIL OFL 1.1), CameraX (Apache 2.0), ML Kit text recognition (Google ML Kit terms). CSCA master list: German Federal Office for Information Security (BSI).</string>
+</resources>
