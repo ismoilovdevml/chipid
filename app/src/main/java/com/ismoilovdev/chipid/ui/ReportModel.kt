@@ -3,6 +3,7 @@ package com.ismoilovdev.chipid.ui
 import com.ismoilovdev.chipid.core.Check
 import com.ismoilovdev.chipid.core.Countries
 import com.ismoilovdev.chipid.core.MasterList
+import com.ismoilovdev.chipid.core.SignerCheck
 import com.ismoilovdev.chipid.reader.ReadReport
 import com.ismoilovdev.chipid.reader.hex
 import java.text.SimpleDateFormat
@@ -21,6 +22,18 @@ object ReportModel {
     fun signerCountry(r: ReadReport): String {
         val cc = r.passive.dsc?.issuerX500Principal?.let { MasterList.country(it) }
         return Countries.name(cc ?: r.mrz?.issuingState ?: "?")
+    }
+
+    /** Signer sanity: vendor/test PKI, and whether its country is the issuing state. */
+    class SignerFlags(val testPki: Boolean, val organisation: String?, val countryMatches: Boolean?, val signerCountry: String?)
+
+    fun signerFlags(r: ReadReport): SignerFlags {
+        val dsc = r.passive.dsc ?: return SignerFlags(false, null, null, null)
+        val dns = dsc.subjectX500Principal.name + "," + dsc.issuerX500Principal.name
+        val test = SignerCheck.looksLikeTestPki(dns, dsc.notBefore, dsc.notAfter)
+        val org = Regex("""(?:^|,)\s*O=([^,]+)""").find(dsc.issuerX500Principal.name)?.groupValues?.get(1)
+        val cc = MasterList.country(dsc.issuerX500Principal)
+        return SignerFlags(test, org, r.mrz?.let { SignerCheck.countryMatches(it.issuingState, cc) }, cc)
     }
 
     /** Name as printed in the MRZ; may be truncated to fit the zone (ICAO 9303 part 3, 4.6). */
@@ -57,6 +70,16 @@ object ReportModel {
                 add(Row("SOD signature (DSC)", pa.signatureAlgorithm ?: "—", pa.sodSignature))
                 add(Row("DSC → CSCA chain", pa.cscaSubject ?: "no matching CSCA", pa.cscaChain))
                 add(Row("Passive Authentication", verdict(pa.overall), pa.overall))
+                val f = signerFlags(r)
+                if (pa.dsc != null) {
+                    add(
+                        if (f.testPki) Row("Signer certificate", "Test / development PKI${f.organisation?.let { " ($it)" } ?: ""}, not a state authority", Check.FAIL)
+                        else Row("Signer certificate", "No test or development markers", Check.PASS),
+                    )
+                }
+                f.countryMatches?.let { ok ->
+                    add(Row("Signer country = issuing state", "${r.mrz?.issuingState} vs ${f.signerCountry}", if (ok) Check.PASS else Check.FAIL))
+                }
                 add(Row("Chip Authentication", r.chipAuth.detail, r.chipAuth.check))
                 add(
                     r.activeAuth?.let {
@@ -132,6 +155,7 @@ object ReportModel {
                 Row("Subject", c.subjectX500Principal.name),
                 Row("Issuer", c.issuerX500Principal.name),
                 Row("Serial", c.serialNumber.toString(16)),
+                authorityKeyId(c)?.let { Row("Authority key ID", it) },
                 Row("Validity", "${fmt.format(c.notBefore)} → ${fmt.format(c.notAfter)}"),
                 r.passive.dscValidNow?.let { Row("Valid today", if (it) "yes" else "no (normal: signer keys are used only briefly)") },
                 Row("Key", "${c.publicKey.algorithm} · ${c.sigAlgName}"),
@@ -152,6 +176,12 @@ object ReportModel {
         },
         mono = true,
     )
+
+    private fun authorityKeyId(c: java.security.cert.X509Certificate): String? = runCatching {
+        val ext = c.getExtensionValue(org.bouncycastle.asn1.x509.Extension.authorityKeyIdentifier.id) ?: return null
+        org.bouncycastle.asn1.x509.AuthorityKeyIdentifier.getInstance(org.bouncycastle.asn1.ASN1OctetString.getInstance(ext).octets)
+            .keyIdentifierOctets?.joinToString(":") { "%02X".format(it) }
+    }.getOrNull()
 
     fun text(r: ReadReport): String = buildString {
         sections(r).forEach { s ->

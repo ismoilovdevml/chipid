@@ -1,6 +1,7 @@
 package com.ismoilovdev.chipid.core
 
 import org.bouncycastle.asn1.ASN1OctetString
+import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.AuthorityKeyIdentifier
 import org.bouncycastle.asn1.x509.Extension
 import org.bouncycastle.asn1.x509.SubjectKeyIdentifier
@@ -13,6 +14,7 @@ import java.io.ByteArrayInputStream
 import java.security.MessageDigest
 import java.security.cert.X509Certificate
 import java.util.Date
+import javax.security.auth.x500.X500Principal
 
 /**
  * Passive Authentication (ICAO 9303 part 11, 5.1):
@@ -81,8 +83,12 @@ object PassiveAuth {
         var cscaSubject: String? = null
         var matched: X509Certificate? = null
         val chain = dsc?.let { cert ->
-            val candidates = anchors.filter { it.subjectX500Principal == cert.issuerX500Principal }
-                .sortedByDescending { keyIdMatches(cert, it) }
+            // Narrow by name or key identifier; only the signature check below decides. Some issuers
+            // encode the DSC issuer with RDNs in a different order than their CSCA subject.
+            val issuer = cert.issuerX500Principal
+            val candidates = anchors.filter {
+                it.subjectX500Principal == issuer || sameRdns(it.subjectX500Principal, issuer) || keyIdMatches(cert, it)
+            }.sortedByDescending { keyIdMatches(cert, it) }
             if (candidates.isEmpty()) {
                 errors += "No CSCA for issuer ${cert.issuerX500Principal.name}"
                 return@let Check.UNKNOWN
@@ -122,6 +128,14 @@ object PassiveAuth {
             l
         }
         return bytes.copyOfRange(i, i + len)
+    }
+
+    /** Same set of RDNs regardless of order and case. */
+    private fun sameRdns(a: X500Principal, b: X500Principal): Boolean {
+        fun rdns(p: X500Principal) = X500Name.getInstance(p.encoded).rdNs.flatMap { rdn ->
+            rdn.typesAndValues.map { "${it.type.id}=${it.value.toString().trim().lowercase()}" }
+        }.toSet()
+        return rdns(a) == rdns(b)
     }
 
     private fun keyIdMatches(dsc: X509Certificate, csca: X509Certificate): Boolean {

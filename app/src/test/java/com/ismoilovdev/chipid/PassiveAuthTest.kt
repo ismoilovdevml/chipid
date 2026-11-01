@@ -69,6 +69,22 @@ class PassiveAuthTest {
     }
 
     @Test
+    fun issuerNameInDifferentRdnOrderStillChains() {
+        // Some states encode the DSC issuer with the RDNs in the opposite order to their CSCA
+        // subject. X.500 treats those as different names; the key identifier and the signature
+        // still prove the link.
+        val cscaKeys = TestPki.rsaKeys()
+        val csca = TestPki.cert("C=UT, O=TEST, CN=CSCA-TEST", "C=UT, O=TEST, CN=CSCA-TEST", cscaKeys.public, cscaKeys.private, ca = true)
+        val dscKeys = TestPki.ecKeys()
+        val dsc = TestPki.cert("C=UT, O=TEST, CN=DS-TEST", "CN=CSCA-TEST, O=TEST, C=UT", dscKeys.public, cscaKeys.private, ca = false, serial = 2)
+        val h = TestPki.Hierarchy(cscaKeys, csca, dscKeys, dsc)
+        val r = PassiveAuth.verify(goodSod(h), mapOf(1 to dg1, 2 to dg2), listOf(csca))
+
+        assertEquals(Check.PASS, r.cscaChain)
+        assertEquals(Check.PASS, r.overall)
+    }
+
+    @Test
     fun dataGroupNotReadIsSkipped() {
         val h = TestPki.hierarchy()
         val r = PassiveAuth.verify(goodSod(h), mapOf(1 to dg1), listOf(h.csca))

@@ -50,12 +50,15 @@ import com.ismoilovdev.chipid.reader.ReadReport
 fun ResultScreen(r: ReadReport, userAnchor: Boolean, onClose: () -> Unit, onNew: () -> Unit, onDetails: () -> Unit) {
     val pa = r.passive
     val signature = combine(pa.dataGroupHashes, pa.sodSignature)
+    val flags = ReportModel.signerFlags(r)
+    val foreignSigner = flags.countryMatches == false
     val verdict = when {
         pa.overall == Check.FAIL || r.chipGenuine == Check.FAIL -> Check.FAIL
-        pa.overall == Check.UNKNOWN || userAnchor -> Check.UNKNOWN
+        pa.overall == Check.UNKNOWN || userAnchor || flags.testPki || foreignSigner -> Check.UNKNOWN
         else -> Check.PASS
     }
     val country = ReportModel.signerCountry(r)
+    val issuing = r.mrz?.let { Countries.name(it.issuingState) } ?: country
 
     ScreenFrame(
         gap = 18.dp,
@@ -68,7 +71,17 @@ fun ResultScreen(r: ReadReport, userAnchor: Boolean, onClose: () -> Unit, onNew:
             stringResource(R.string.result),
             left = { RoundIconButton(Ic.close, stringResource(R.string.close), size = 18.dp, onClick = onClose) },
         )
-        Banner(verdict, country, userAnchor)
+        Banner(
+            verdict,
+            when {
+                verdict != Check.UNKNOWN -> null
+                flags.testPki -> stringResource(R.string.verdict_test) to stringResource(R.string.verdict_test_sub, flags.organisation ?: "?", issuing)
+                foreignSigner -> stringResource(R.string.verdict_foreign) to stringResource(R.string.verdict_foreign_sub, country, issuing)
+                userAnchor -> stringResource(R.string.verdict_user) to stringResource(R.string.verdict_user_sub)
+                else -> stringResource(R.string.verdict_unknown) to stringResource(R.string.verdict_unknown_sub, country)
+            },
+            country,
+        )
         PersonCard(r)
         r.mrz?.let { m ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -98,14 +111,14 @@ fun ResultScreen(r: ReadReport, userAnchor: Boolean, onClose: () -> Unit, onNew:
 }
 
 @Composable
-private fun Banner(verdict: Check, country: String, userAnchor: Boolean) {
+/** [warning]: title and subtitle for the UNKNOWN case, chosen by the caller. */
+private fun Banner(verdict: Check, warning: Pair<String, String>?, country: String) {
     val (bg, border, fg, sub, icon, title, text) = when (verdict) {
         Check.PASS -> Style(C.successBg, C.successBorder, C.success, C.successText, Ic.check, stringResource(R.string.verdict_pass), stringResource(R.string.verdict_pass_sub, country))
-        Check.UNKNOWN -> if (userAnchor) {
-            Style(C.warnBg, C.warnBorder, C.warn, C.warnText, Ic.info, stringResource(R.string.verdict_user), stringResource(R.string.verdict_user_sub))
-        } else {
-            Style(C.warnBg, C.warnBorder, C.warn, C.warnText, Ic.info, stringResource(R.string.verdict_unknown), stringResource(R.string.verdict_unknown_sub, country))
-        }
+        Check.UNKNOWN -> Style(
+            C.warnBg, C.warnBorder, C.warn, C.warnText, Ic.info,
+            warning?.first ?: stringResource(R.string.verdict_unknown), warning?.second ?: stringResource(R.string.verdict_unknown_sub, country),
+        )
         else -> Style(C.dangerBg, C.dangerBorder, C.danger, C.dangerText, Ic.alert, stringResource(R.string.verdict_fail), stringResource(R.string.verdict_fail_sub))
     }
     Panel(radius = 20.dp, color = bg, border = BorderStroke(1.dp, border)) {

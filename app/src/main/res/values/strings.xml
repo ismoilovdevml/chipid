@@ -93,6 +93,10 @@
     <string name="verdict_pass_sub">Chip data signed by the issuing authority of %1$s</string>
     <string name="verdict_unknown">Signature intact, issuer not verified</string>
     <string name="verdict_unknown_sub">No trusted certificate for %1$s in the master list</string>
+    <string name="verdict_test">Signed with a test certificate</string>
+    <string name="verdict_test_sub">The chip data is intact but signed by a development certificate (%1$s), not by an authority of %2$s. Its origin cannot be confirmed.</string>
+    <string name="verdict_foreign">Signed by another country</string>
+    <string name="verdict_foreign_sub">The signer belongs to %1$s, but the document is issued by %2$s.</string>
     <string name="verdict_fail">Verification failed</string>
     <string name="verdict_fail_sub">The chip data or its signature did not check out</string>
     <string name="name">Name</string>
