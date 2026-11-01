@@ -1,19 +1,30 @@
+.DS_Store
+
+# Android
 .gradle/
 .kotlin/
 build/
-app/build/
-local.properties
+android/local.properties
 .idea/
 *.iml
-.DS_Store
 captures/
 *.apk
 *.aab
 *.keystore
 *.jks
 
-# Fetched at build time (see app/build.gradle.kts, fetchMasterList); not redistributed.
-app/src/main/assets/masterlist.ml
+# iOS
+ios/ChipID.xcodeproj/
+ios/**/.build/
+ios/**/.swiftpm/
+ios/**/Package.resolved
+DerivedData/
+xcuserdata/
+
+# Fetched at build time, not redistributed (android/app/build.gradle.kts fetchMasterList,
+# ios/scripts/fetch-masterlist.sh).
+android/app/src/main/assets/masterlist.ml
+ios/ChipID/Resources/masterlist.ml
 
 # Chip exports must never be committed.
 export/

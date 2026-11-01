@@ -1,8 +1,8 @@
-<p align="center"><img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png" width="96" alt="ChipID"></p>
+<p align="center"><img src="android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png" width="96" alt="ChipID"></p>
 
 <h1 align="center">ChipID</h1>
 
-<p align="center">Read the chip in a passport or ID card with an Android phone, and verify that the data and the chip are genuine. Fully offline.</p>
+<p align="center">Read the chip in a passport or ID card with an Android phone or an iPhone, and verify that the data and the chip are genuine. Fully offline.</p>
 
 ---
 
@@ -30,7 +30,15 @@ chip, and runs the same cryptographic checks a border e-gate runs on the documen
   rejected. Extra anchors can be added at runtime; a document verified only through one of them is
   flagged, never shown as plainly genuine.
 
-## Install
+## Repository layout
+
+| Path | What |
+|---|---|
+| `android/` | Android app (Kotlin, Jetpack Compose, JMRTD), Gradle project |
+| `ios/` | iOS app (Swift, SwiftUI); `ios/ChipCore` is its platform-independent verification core |
+| `ios/Vendor/NFCPassportReader` | Vendored NFC/secure-messaging library with ChipID changes ([CHANGES.md](ios/Vendor/NFCPassportReader/CHANGES.md)) |
+
+## Install (Android)
 
 Download `chipid-<version>.apk` from [Releases](https://github.com/ismoilovdevml/chipid/releases) and
 check that it is the official build before installing. Anyone can rebuild an open-source app, add
@@ -60,11 +68,12 @@ Android also refuses to update an installed ChipID with an APK signed by a diffe
 
 See [SECURITY.md](SECURITY.md) for the threat model and what a green result does and does not mean.
 
-## Build
+## Build: Android
 
 Requirements: JDK 17+, Android SDK (compileSdk 36), an NFC phone (Android 8+).
 
 ```bash
+cd android
 ./gradlew :app:testDebugUnitTest   # JVM tests: PA chain, AA (RSA ISO 9796-2, ECDSA), MRZ TD1/TD3, master list
 ./gradlew :app:assembleDebug       # first build downloads the BSI master list into assets/
 ./gradlew :app:assembleRelease     # signed only if ~/.config/chipid/keystore.properties exists
@@ -74,9 +83,30 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 Add trust anchors without rebuilding by copying `.ml`, `.der`, `.cer`, `.crt` or `.pem` files to
 `/sdcard/Android/data/com.ismoilovdev.chipid/files/csca/`.
 
-## How it is built
+## Build: iOS
 
-| Path | What |
+Requirements: Xcode 26+, [XcodeGen](https://github.com/yonaskolb/XcodeGen), an iPhone XS or newer.
+Reading chips needs the *NFC Tag Reading* capability, which Apple grants only to paid
+Apple Developer Program teams; a free personal team can build and run the app, but not read chips.
+
+```bash
+cd ios
+swift test --package-path ChipCore   # core tests on macOS: PA/AA against BouncyCastle-made vectors, BSI master list, MRZ, LDS
+xcodegen generate                     # creates ChipID.xcodeproj (not committed)
+open ChipID.xcodeproj                 # set your team, run on an iPhone
+```
+
+The first build copies the master list from `android/app/src/main/assets/` or downloads it from the
+BSI (`ios/scripts/fetch-masterlist.sh`). Debug and simulator builds have a "Try a demo document"
+button that opens the ICAO specimen signed with throwaway keys, so the result screens can be seen
+without a chip. Extra trust anchors go in Files → On My iPhone → ChipID → csca.
+
+**Status:** the iOS app builds and its core is tested on macOS, but it has not yet read a real
+document on an iPhone.
+
+## How the Android app is built
+
+| Path (`android/app/src/main/java/.../chipid/`) | What |
 |---|---|
 | `core/Mrz.kt` | MRZ finder and parser with per-field OCR repair and check-digit validation |
 | `core/PassiveAuth.kt` | SOD hash check, CMS signature, DSC → CSCA chain |
@@ -96,9 +126,19 @@ explicit EC parameters).
   default discovery, which silently drops an app's reader mode. ChipID re-arms reader mode when the
   camera is released.
 
+## How the iOS app is built
+
+| Path (`ios/`) | What |
+|---|---|
+| `ChipCore/` | Swift package on OpenSSL: MRZ, LDS (DG1/2/11/12), master list with pinned signer, Passive and Active Authentication, report model. Same rules and pins as the Android core |
+| `Vendor/NFCPassportReader/.../ChipSession.swift` | NFC session in the Android app's order: PACE (MRZ or CAN) / BAC, SOD, data groups, AA, CA + DG1 re-read |
+| `ChipID/` | SwiftUI screens, camera MRZ scanning with Vision, trust store |
+
 ## Limits
 
-- JPEG 2000 face images are not decoded on the phone yet (the photo is still hash-verified).
+- Android: JPEG 2000 face images are not decoded on the phone yet (the photo is still hash-verified).
+  iOS decodes them with ImageIO.
+- iOS: PACE Integrated Mapping is not supported by the vendored library (Generic Mapping is).
 - No face matching, no CRL/revocation checks, no EAC terminal authentication, no PACE-CAM.
 
 ## Disclaimer

@@ -1,0 +1,39 @@
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+  pull_request:
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+
+defaults:
+  run:
+    working-directory: ios
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the BSI master list
+        # ChipCore's master list test reads it from the Android assets folder.
+        run: |
+          ./scripts/fetch-masterlist.sh
+          cp ChipID/Resources/masterlist.ml ../android/app/src/main/assets/
+      - name: ChipCore tests
+        run: swift test --package-path ChipCore
+      - name: Build the app (unsigned)
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          xcodebuild -project ChipID.xcodeproj -scheme ChipID -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+      - name: No networking APIs in the app binary
+        run: |
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -path '*Debug-iphoneos/ChipID.app' -type d | head -1)
+          # Debug builds keep the app code in ChipID.debug.dylib. OpenSSL.framework itself imports
+          # socket/connect for its unused connect BIOs, so only ChipID's own code is checked.
+          for bin in "$APP/ChipID" "$APP/ChipID.debug.dylib"; do
+            [ -f "$bin" ] || continue
+            if nm -u "$bin" | grep -E 'URLSession|NWConnection|CFStream|_socket$|_connect$'; then echo "networking symbol in $bin"; exit 1; fi
+          done

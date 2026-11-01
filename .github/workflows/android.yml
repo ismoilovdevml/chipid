@@ -1,9 +1,15 @@
-name: CI
+name: Android
 
 on:
   push:
     branches: [main]
+    paths: ["android/**", ".github/workflows/android.yml"]
   pull_request:
+    paths: ["android/**", ".github/workflows/android.yml"]
+
+defaults:
+  run:
+    working-directory: android
 
 jobs:
   test:
