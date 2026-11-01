@@ -23,9 +23,27 @@ object ReportModel {
         return Countries.name(cc ?: r.mrz?.issuingState ?: "?")
     }
 
-    fun name(r: ReadReport): Pair<String, String> {
+    /** Name as printed in the MRZ; may be truncated to fit the zone (ICAO 9303 part 3, 4.6). */
+    fun mrzName(r: ReadReport): Pair<String, String> {
         val m = r.mrz ?: return "" to ""
         return m.primaryIdentifier.replace('<', ' ').trim() to m.secondaryIdentifier.replace('<', ' ').trim()
+    }
+
+    /** Full name from DG11 when the chip has it, otherwise the MRZ name. */
+    fun name(r: ReadReport): Pair<String, String> =
+        r.dg11?.nameOfHolder?.takeIf { it.isNotBlank() }?.let(::splitIcaoName) ?: mrzName(r)
+
+    /** "SURNAME<<GIVEN<NAMES" -> ("SURNAME", "GIVEN NAMES"). */
+    fun splitIcaoName(field: String): Pair<String, String> {
+        val parts = field.trimEnd('<').split("<<", limit = 2)
+        return parts[0].replace('<', ' ').trim() to parts.getOrElse(1) { "" }.replace('<', ' ').trim()
+    }
+
+    fun isTruncation(mrz: String, full: String): Boolean = mrz != full && full.startsWith(mrz.trimEnd())
+
+    /** YYYYMMDD (DG11/DG12) -> DD.MM.YYYY; anything else is returned unchanged. */
+    fun date8(s: String?): String? = s?.trim()?.let {
+        if (it.length == 8 && it.all(Char::isDigit)) "${it.substring(6)}.${it.substring(4, 6)}.${it.substring(0, 4)}" else it
     }
 
     private fun security(r: ReadReport): Section {
@@ -56,11 +74,19 @@ object ReportModel {
         val personal = m.personalNumber?.trim('<')?.takeIf { it.isNotBlank() }
             ?: m.optionalData1?.trim('<')?.takeIf { it.isNotBlank() }
         val (sur, given) = name(r)
+        val (mrzSur, mrzGiven) = mrzName(r)
+        val fromDg11 = r.dg11?.nameOfHolder?.isNotBlank() == true
+        val mrzDiffers = fromDg11 && (mrzSur != sur || mrzGiven != given)
+        val truncated = isTruncation(mrzSur, sur) || isTruncation(mrzGiven, given)
         return Section(
-            "Holder (DG1 / MRZ)",
+            if (fromDg11) "Holder (DG1 / DG11)" else "Holder (DG1 / MRZ)",
             listOfNotNull(
                 Row("Surname", sur),
                 Row("Given names", given),
+                if (mrzDiffers) Row(
+                    if (truncated) "Name in MRZ (shortened to fit)" else "Name in MRZ",
+                    "$mrzSur, $mrzGiven",
+                ) else null,
                 Row("Sex", m.gender.toString()),
                 Row("Date of birth", date(m.dateOfBirth, birth = true)),
                 Row("Nationality", "${Countries.name(m.nationality)} (${m.nationality})"),
@@ -79,7 +105,7 @@ object ReportModel {
                 Row("Issuing state", "${Countries.name(m.issuingState)} (${m.issuingState})"),
                 Row("Date of expiry", date(m.dateOfExpiry)),
                 r.dg12?.issuingAuthority?.let { Row("Issuing authority", it) },
-                r.dg12?.dateOfIssue?.let { Row("Date of issue", it) },
+                r.dg12?.dateOfIssue?.let { Row("Date of issue", date8(it)!!) },
                 r.passive.ldsVersion?.let { Row("LDS version", it) },
             ),
         )
@@ -88,8 +114,8 @@ object ReportModel {
     private fun additional(r: ReadReport): Section? {
         val d = r.dg11 ?: return null
         val rows = listOfNotNull(
-            d.nameOfHolder?.let { Row("Full name", it.replace('<', ' ').trim()) },
-            d.fullDateOfBirth?.let { Row("Full date of birth", it) },
+            d.nameOfHolder?.let { splitIcaoName(it) }?.let { (sur, given) -> Row("Full name", listOf(sur, given).filter(String::isNotEmpty).joinToString(", ")) },
+            d.fullDateOfBirth?.let { Row("Full date of birth", date8(it)!!) },
             d.placeOfBirth?.takeIf { it.isNotEmpty() }?.let { Row("Place of birth", it.joinToString(", ")) },
             d.permanentAddress?.takeIf { it.isNotEmpty() }?.let { Row("Address", it.joinToString(", ")) },
             d.personalNumber?.let { Row("Personal number (DG11)", it) },
