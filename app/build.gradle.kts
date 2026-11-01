@@ -1,4 +1,5 @@
 import java.net.URI
+import java.util.Properties
 import java.util.zip.ZipInputStream
 
 plugins {
@@ -14,16 +15,35 @@ android {
         applicationId = "com.ismoilovdev.chipid"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
 
         // Phones only; drops ML Kit's x86 OCR libraries (~23 MB).
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
+    // Release signing key lives outside the repo: ~/.config/chipid/keystore.properties
+    // (or the file named by CHIPID_KEYSTORE). Without it, release builds are unsigned.
+    val keystoreProps = (System.getenv("CHIPID_KEYSTORE") ?: "${System.getProperty("user.home")}/.config/chipid/keystore.properties")
+        .let(::File).takeIf { it.isFile }?.let { f -> Properties().apply { f.inputStream().use(::load) } }
+
+    signingConfigs {
+        if (keystoreProps != null) {
+            create("release") {
+                storeFile = File(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 

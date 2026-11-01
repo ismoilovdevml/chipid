@@ -45,13 +45,14 @@ import com.ismoilovdev.chipid.core.MasterList
 import com.ismoilovdev.chipid.core.combine
 import com.ismoilovdev.chipid.reader.ReadReport
 
+/** [userAnchor]: the chain ends at a certificate the user added, not one from the verified master list. */
 @Composable
-fun ResultScreen(r: ReadReport, onClose: () -> Unit, onNew: () -> Unit, onDetails: () -> Unit, onExport: () -> Unit) {
+fun ResultScreen(r: ReadReport, userAnchor: Boolean, onClose: () -> Unit, onNew: () -> Unit, onDetails: () -> Unit) {
     val pa = r.passive
     val signature = combine(pa.dataGroupHashes, pa.sodSignature)
     val verdict = when {
         pa.overall == Check.FAIL || r.chipGenuine == Check.FAIL -> Check.FAIL
-        pa.overall == Check.UNKNOWN -> Check.UNKNOWN
+        pa.overall == Check.UNKNOWN || userAnchor -> Check.UNKNOWN
         else -> Check.PASS
     }
     val country = ReportModel.signerCountry(r)
@@ -66,9 +67,8 @@ fun ResultScreen(r: ReadReport, onClose: () -> Unit, onNew: () -> Unit, onDetail
         TopBar(
             stringResource(R.string.result),
             left = { RoundIconButton(Ic.close, stringResource(R.string.close), size = 18.dp, onClick = onClose) },
-            right = { RoundIconButton(Ic.export, stringResource(R.string.export_raw), size = 18.dp, onClick = onExport) },
         )
-        Banner(verdict, country)
+        Banner(verdict, country, userAnchor)
         PersonCard(r)
         r.mrz?.let { m ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -92,16 +92,20 @@ fun ResultScreen(r: ReadReport, onClose: () -> Unit, onNew: () -> Unit, onDetail
             )
             HorizontalDivider(color = C.divider)
             val cc = pa.dsc?.issuerX500Principal?.let { MasterList.country(it) } ?: r.mrz?.issuingState ?: "?"
-            CheckRow(stringResource(R.string.check_chain, cc), pa.cscaChain, onClick = onDetails)
+            CheckRow(stringResource(if (userAnchor) R.string.check_chain_user else R.string.check_chain, cc), if (userAnchor && pa.cscaChain == Check.PASS) Check.UNKNOWN else pa.cscaChain, onClick = onDetails)
         }
     }
 }
 
 @Composable
-private fun Banner(verdict: Check, country: String) {
+private fun Banner(verdict: Check, country: String, userAnchor: Boolean) {
     val (bg, border, fg, sub, icon, title, text) = when (verdict) {
         Check.PASS -> Style(C.successBg, C.successBorder, C.success, C.successText, Ic.check, stringResource(R.string.verdict_pass), stringResource(R.string.verdict_pass_sub, country))
-        Check.UNKNOWN -> Style(C.warnBg, C.warnBorder, C.warn, C.warnText, Ic.info, stringResource(R.string.verdict_unknown), stringResource(R.string.verdict_unknown_sub, country))
+        Check.UNKNOWN -> if (userAnchor) {
+            Style(C.warnBg, C.warnBorder, C.warn, C.warnText, Ic.info, stringResource(R.string.verdict_user), stringResource(R.string.verdict_user_sub))
+        } else {
+            Style(C.warnBg, C.warnBorder, C.warn, C.warnText, Ic.info, stringResource(R.string.verdict_unknown), stringResource(R.string.verdict_unknown_sub, country))
+        }
         else -> Style(C.dangerBg, C.dangerBorder, C.danger, C.dangerText, Ic.alert, stringResource(R.string.verdict_fail), stringResource(R.string.verdict_fail_sub))
     }
     Panel(radius = 20.dp, color = bg, border = BorderStroke(1.dp, border)) {
@@ -170,17 +174,8 @@ private fun CheckRow(text: String, c: Check, onClick: (() -> Unit)? = null) {
 }
 
 @Composable
-fun DetailsScreen(r: ReadReport, exportMessage: String?, onBack: () -> Unit, onExport: () -> Unit, onWipe: () -> Unit) {
-    ScreenFrame(
-        gap = 14.dp,
-        bottom = {
-            exportMessage?.let { Text(it, style = T.tiny.copy(fontFamily = Mono)) }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(Modifier.weight(1f)) { PrimaryButton(stringResource(R.string.export_raw), icon = Ic.export, onClick = onExport) }
-                RoundIconButton(Ic.trash, stringResource(R.string.delete_exports), tint = C.danger, onClick = onWipe)
-            }
-        },
-    ) {
+fun DetailsScreen(r: ReadReport, onBack: () -> Unit) {
+    ScreenFrame(gap = 14.dp) {
         TopBar(stringResource(R.string.technical_title), left = { RoundIconButton(Ic.back, stringResource(R.string.back), onClick = onBack) })
         ReportModel.sections(r).forEach { s ->
             Panel(padding = 16.dp) {

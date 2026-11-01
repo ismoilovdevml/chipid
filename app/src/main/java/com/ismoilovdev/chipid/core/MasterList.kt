@@ -18,6 +18,8 @@ class MasterList(
     val certificates: List<X509Certificate>,
     /** The CMS signature is intact and made by the embedded signer certificate. */
     val signatureValid: Boolean,
+    /** The signer certificate is issued by one of the pinned roots, so the list is the publisher's. */
+    val signerTrusted: Boolean,
     val signerSubject: String?,
     val sha256: String,
 ) {
@@ -27,9 +29,23 @@ class MasterList(
         certificates.filter { country(it.subjectX500Principal) == cc }
 
     companion object {
+        /**
+         * SHA-256 of the SubjectPublicKeyInfo of every German CSCA key (C=DE, O=bund, OU=bsi,
+         * CN=csca-germany) in DE_ML_2026-10-01-11-50-52.ml, downloaded over HTTPS from bsi.bund.de on
+         * 2026-11-01. The BSI "CSCA Master List Signer" certificate must be issued by one of them.
+         * A new German CSCA key needs an app update.
+         */
+        val GERMAN_CSCA_PINS = setOf(
+            "cbd048969ae6171addb96cea36897f2fa381346b8ebc43c45bee24f0ad71ef42", // serial 101, 2013
+            "20d1496eaa3c19f6af15aea9eda62ace5ad8ae6be66e637ba17c7190f779b2a3", // serial 103, 2016
+            "04c58c0bee5e902c725954a490e451dcbafb281941ae8106cc746060d568a7ce", // 2019
+            "aa9a2c80eb69bbb600255798e028b9a0177199b1851393329979be8e6ec9c3e2", // 2021
+            "b7d7c66d3eb51e4fbd47c7e637cf31ee50447e4dff11e61e1b536f26373c5590", // 2024, signs the 2028 list signer
+        )
+
         private val converter by lazy { JcaX509CertificateConverter().setProvider(Bc.provider) }
 
-        fun parse(bytes: ByteArray): MasterList {
+        fun parse(bytes: ByteArray, pinnedRoots: Set<String> = GERMAN_CSCA_PINS): MasterList {
             val cms = CMSSignedData(bytes)
             val content = cms.signedContent.content as ByteArray
             val seq = ASN1Sequence.getInstance(content)
@@ -37,16 +53,33 @@ class MasterList(
             val certs = set.map { converter.getCertificate(X509CertificateHolder(it.toASN1Primitive().encoded)) }
 
             val signer = cms.signerInfos.signers.firstOrNull()
-            val signerCert = signer?.let { s -> cms.certificates.getMatches(null).firstOrNull { s.sid.match(it) } }
+            val embedded = cms.certificates.getMatches(null)
+            val signerHolder = signer?.let { s -> embedded.firstOrNull { s.sid.match(it) } }
             val valid = try {
-                signer != null && signerCert != null &&
-                    signer.verify(JcaSimpleSignerInfoVerifierBuilder().setProvider(Bc.provider).build(signerCert))
+                signer != null && signerHolder != null &&
+                    signer.verify(JcaSimpleSignerInfoVerifierBuilder().setProvider(Bc.provider).build(signerHolder))
             } catch (_: Exception) {
                 false
             }
+
+            // The issuer may sit in the CMS certificate set or in the list itself; only a pinned key counts.
+            val trusted = valid && signerHolder != null && run {
+                val signerCert = converter.getCertificate(signerHolder)
+                val candidates = certs + embedded.map { converter.getCertificate(it) }
+                candidates.any { root ->
+                    spkiSha256(root) in pinnedRoots &&
+                        root.subjectX500Principal == signerCert.issuerX500Principal &&
+                        runCatching { signerCert.verify(root.publicKey, Bc.provider) }.isSuccess
+                }
+            }
             val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
-            return MasterList(certs, valid, signerCert?.subject?.toString(), hash)
+            return MasterList(certs, valid, trusted, signerHolder?.subject?.toString(), hash)
         }
+
+        /** Hash of the certificate's SubjectPublicKeyInfo exactly as encoded in the certificate. */
+        fun spkiSha256(cert: X509Certificate): String =
+            MessageDigest.getInstance("SHA-256").digest(X509CertificateHolder(cert.encoded).subjectPublicKeyInfo.encoded)
+                .joinToString("") { "%02x".format(it) }
 
         fun country(p: X500Principal): String? =
             Regex("""(?:^|,)\s*C=([A-Z]{2})""").find(p.getName(X500Principal.RFC2253))?.groupValues?.get(1)

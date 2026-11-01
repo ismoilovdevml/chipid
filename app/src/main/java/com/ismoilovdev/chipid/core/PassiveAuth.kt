@@ -31,6 +31,8 @@ object PassiveAuth {
         val signatureAlgorithm: String?,
         val cscaChain: Check,
         val dsc: X509Certificate?,
+        /** The trust anchor the DSC chained to, so callers can tell where that trust came from. */
+        val csca: X509Certificate?,
         val cscaSubject: String?,
         val dscValidNow: Boolean?,
         val ldsVersion: String?,
@@ -77,6 +79,7 @@ object PassiveAuth {
         }
 
         var cscaSubject: String? = null
+        var matched: X509Certificate? = null
         val chain = dsc?.let { cert ->
             val candidates = anchors.filter { it.subjectX500Principal == cert.issuerX500Principal }
                 .sortedByDescending { keyIdMatches(cert, it) }
@@ -92,6 +95,7 @@ object PassiveAuth {
                 }
             }
             if (ok != null) {
+                matched = ok
                 cscaSubject = "${ok.subjectX500Principal.name} (serial ${ok.serialNumber.toString(16)})"
                 Check.PASS
             } else {
@@ -104,7 +108,7 @@ object PassiveAuth {
             val now = Date()
             !now.before(it.notBefore) && !now.after(it.notAfter)
         }
-        return Result(digestAlg, perDg, hashes, sodSig, sigAlg, chain, dsc, cscaSubject, validNow, sod.ldsVersion, errors)
+        return Result(digestAlg, perDg, hashes, sodSig, sigAlg, chain, dsc, matched, cscaSubject, validNow, sod.ldsVersion, errors)
     }
 
     /** EF.SOD is [APPLICATION 23] (tag 0x77) wrapping a CMS ContentInfo. */

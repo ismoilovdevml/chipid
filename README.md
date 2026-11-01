@@ -26,7 +26,28 @@ chip, and runs the same cryptographic checks a border e-gate runs on the documen
   | Chip Authentication | ICAO 9303-11 §6.2, BSI TR-03110 | (EC)DH with the DG14 key, then a re-read under the new session keys. Not a clone |
 
 - **Trust list:** the German BSI CSCA master list (600+ certificates, 117 countries), fetched at build
-  time; its CMS signature is verified on the phone. Extra anchors can be added at runtime.
+  time. On the phone its signer must chain to a pinned German CSCA key, otherwise the list is
+  rejected. Extra anchors can be added at runtime; a document verified only through one of them is
+  flagged, never shown as plainly genuine.
+
+## Install
+
+Download `chipid-<version>.apk` from [Releases](https://github.com/ismoilovdevml/chipid/releases) and
+check that it is the official build before installing. Anyone can rebuild an open-source app, add
+code that leaks data and publish it under the same name; the signing certificate cannot be faked.
+
+Official signing certificate SHA-256:
+
+```
+D5:3F:C6:E3:5A:9E:31:91:B8:9C:7A:D3:04:92:2A:7D:AB:1F:F5:58:13:B6:05:8A:A0:03:35:F5:2C:1A:02:3A
+```
+
+```bash
+apksigner verify --print-certs chipid-<version>.apk | grep SHA-256
+shasum -a 256 chipid-<version>.apk        # compare with the release notes
+```
+
+Android also refuses to update an installed ChipID with an APK signed by a different key.
 
 ## Privacy
 
@@ -34,8 +55,8 @@ chip, and runs the same cryptographic checks a border e-gate runs on the documen
   overridden in the manifest), so Android blocks every connection. Verify any build with
   `aapt2 dump permissions app-debug.apk`: only `NFC` and `CAMERA`.
 - Camera frames are recognised on the phone and never stored.
-- The access key and the chip data stay in memory. Nothing is written unless you tap *Export raw
-  files*; *Delete exported files* removes all exports. Excluded from backups.
+- The access key and the chip data stay in memory only; nothing is written to storage. Release
+  builds block screenshots and are not debuggable. Excluded from backups.
 
 See [SECURITY.md](SECURITY.md) for the threat model and what a green result does and does not mean.
 
@@ -46,6 +67,7 @@ Requirements: JDK 17+, Android SDK (compileSdk 36), an NFC phone (Android 8+).
 ```bash
 ./gradlew :app:testDebugUnitTest   # JVM tests: PA chain, AA (RSA ISO 9796-2, ECDSA), MRZ TD1/TD3, master list
 ./gradlew :app:assembleDebug       # first build downloads the BSI master list into assets/
+./gradlew :app:assembleRelease     # signed only if ~/.config/chipid/keystore.properties exists
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -76,8 +98,7 @@ explicit EC parameters).
 
 ## Limits
 
-- JPEG 2000 face images are not decoded on the phone yet; export and open `face0.jp2` with
-  `opj_decompress`.
+- JPEG 2000 face images are not decoded on the phone yet (the photo is still hash-verified).
 - No face matching, no CRL/revocation checks, no EAC terminal authentication, no PACE-CAM.
 
 ## Disclaimer

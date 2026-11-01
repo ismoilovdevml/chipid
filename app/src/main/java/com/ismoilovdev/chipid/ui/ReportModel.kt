@@ -17,7 +17,7 @@ object ReportModel {
         security(r), person(r), document(r), additional(r), dsc(r), technical(r),
     )
 
-    /** "Uzbekistan" for the CSCA that signed this document, or the MRZ issuing state. */
+    /** "Germany" for the CSCA that signed this document, or the MRZ issuing state. */
     fun signerCountry(r: ReadReport): String {
         val cc = r.passive.dsc?.issuerX500Principal?.let { MasterList.country(it) }
         return Countries.name(cc ?: r.mrz?.issuingState ?: "?")

@@ -52,7 +52,7 @@ object TestPki {
 
     class Hierarchy(val cscaKeys: KeyPair, val csca: X509Certificate, val dscKeys: KeyPair, val dsc: X509Certificate)
 
-    fun hierarchy(country: String = "UZ"): Hierarchy {
+    fun hierarchy(country: String = "UT"): Hierarchy {
         val cscaName = "C=$country, O=TEST, CN=CSCA-TEST"
         val cscaKeys = rsaKeys()
         val csca = cert(cscaName, cscaName, cscaKeys.public, cscaKeys.private, ca = true)

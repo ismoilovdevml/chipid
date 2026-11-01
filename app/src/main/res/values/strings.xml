@@ -105,13 +105,12 @@
     <string name="check_clone_aa">Chip is not a copy (Active Auth)</string>
     <string name="check_clone_na">Clone check not offered by this chip</string>
     <string name="check_chain">Chain of trust: CSCA (%1$s)</string>
+    <string name="check_chain_user">Chain of trust: certificate you added (%1$s)</string>
+    <string name="verdict_user">Verified with a certificate you added</string>
+    <string name="verdict_user_sub">It is not from the verified master list. Trust this only if you know where that certificate came from.</string>
     <string name="new_check">New check</string>
     <string name="technical_details">Technical details (DG, SOD, certificate)</string>
     <string name="technical_title">Technical details</string>
-    <string name="export_raw">Export raw files</string>
-    <string name="delete_exports">Delete exported files</string>
-    <string name="exported_to">Saved to %1$s</string>
-    <string name="exports_deleted">All exported files deleted</string>
 
     <!-- About -->
     <string name="about_title">About &amp; privacy</string>
@@ -119,10 +118,13 @@
     <string name="priv_network_ok">No network access: the app has no INTERNET permission, so Android blocks every connection.</string>
     <string name="priv_network_bad">Warning: this build requests network access.</string>
     <string name="priv_camera">Camera frames are recognised on the phone and never stored.</string>
-    <string name="priv_memory">Chip data stays in memory and is exported only when you ask.</string>
+    <string name="priv_memory">Chip data stays in memory only. Nothing is written to storage, and it is cleared when you start a new check.</string>
     <string name="priv_backup">Excluded from cloud backup and device transfer.</string>
     <string name="about_trust">Trust list</string>
     <string name="trust_summary">%1$d country signing certificates (CSCA) from %2$d countries.</string>
+    <string name="trust_pinned_ok">Master list signature chains to the pinned German CSCA (BSI).</string>
+    <string name="trust_pinned_bad">Master list rejected: its signer is not the pinned German CSCA. No bundled anchors are trusted.</string>
+    <string name="trust_user_added">%1$d user-added certificates. Documents verified only through them are flagged.</string>
     <string name="trust_add">Add more anchors by copying .ml, .der, .cer, .crt or .pem files to Android/data/com.ismoilovdev.chipid/files/csca/.</string>
     <string name="about_how">How verification works</string>
     <string name="about_how_text">PACE or BAC opens an encrypted channel with the key from the MRZ or CAN. Passive Authentication checks every data group against the signed security object (SOD) and the signer certificate against the issuing country\'s CSCA. Chip or Active Authentication proves the chip holds a private key that cannot be copied. Standards: ICAO Doc 9303, BSI TR-03110.</string>

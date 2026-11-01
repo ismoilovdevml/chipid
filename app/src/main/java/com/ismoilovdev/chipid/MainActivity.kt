@@ -20,7 +20,6 @@ import androidx.compose.runtime.setValue
 import com.ismoilovdev.chipid.core.Mrz
 import com.ismoilovdev.chipid.reader.AccessKey
 import com.ismoilovdev.chipid.reader.ChipReader
-import com.ismoilovdev.chipid.reader.Exporter
 import com.ismoilovdev.chipid.reader.ReadProgress
 import com.ismoilovdev.chipid.reader.ReadReport
 import com.ismoilovdev.chipid.reader.Stage
@@ -53,7 +52,6 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
     private var progress by mutableStateOf<ReadProgress?>(null)
     private var error by mutableStateOf<String?>(null)
     private var report by mutableStateOf<ReadReport?>(null)
-    private var message by mutableStateOf<String?>(null)
     private var nfcEnabled by mutableStateOf(true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +60,8 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
         // Personal data on screen: keep it out of screenshots and the recents thumbnail.
         if (!BuildConfig.DEBUG) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         nfc = NfcAdapter.getDefaultAdapter(this)
+        // Older builds could export chip files to shared app storage; remove any leftovers.
+        io.execute { java.io.File(getExternalFilesDir(null), "export").deleteRecursively() }
         io.execute { val t = TrustStore.load(applicationContext); runOnUiThread { trust = t } }
         setContent { ChipIdTheme { App() } }
     }
@@ -140,7 +140,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
     }
 
     private fun resetAll() {
-        key = null; prefill = null; report = null; progress = null; error = null; message = null
+        key = null; prefill = null; report = null; progress = null; error = null
         route = Route.HOME
     }
 
@@ -161,7 +161,7 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
             Route.HOME -> HomeScreen(
                 docType, onSelect = { docType = it },
                 onStart = { route = Route.SCAN },
-                onSettings = { message = null; route = Route.ABOUT },
+                onSettings = { route = Route.ABOUT },
             )
             Route.SCAN -> ScanScreen(
                 docType,
@@ -190,33 +190,19 @@ class MainActivity : ComponentActivity(), NfcAdapter.ReaderCallback {
             Route.RESULT -> report?.let { r ->
                 ResultScreen(
                     r,
+                    userAnchor = trust?.isUserAdded(r.passive.csca) == true,
                     onClose = { resetAll() },
                     onNew = { resetAll(); route = Route.SCAN },
                     onDetails = { route = Route.DETAILS },
-                    onExport = { export(r); route = Route.DETAILS },
                 )
             }
             Route.DETAILS -> report?.let { r ->
-                DetailsScreen(
-                    r, message,
-                    onBack = { route = Route.RESULT },
-                    onExport = { export(r) },
-                    onWipe = { wipe() },
-                )
+                DetailsScreen(r, onBack = { route = Route.RESULT })
             }
-            Route.ABOUT -> AboutScreen(trust, message, onBack = { route = Route.HOME }, onWipe = { wipe() })
+            Route.ABOUT -> AboutScreen(trust, onBack = { route = Route.HOME })
         }
     }
 
-    private fun export(r: ReadReport) {
-        val dir = Exporter.export(this, r, ReportModel.text(r))
-        message = getString(R.string.exported_to, dir.absolutePath) + "\nadb pull ${dir.absolutePath}"
-    }
-
-    private fun wipe() {
-        Exporter.wipe(this)
-        message = getString(R.string.exports_deleted)
-    }
 
     override fun onDestroy() {
         super.onDestroy()

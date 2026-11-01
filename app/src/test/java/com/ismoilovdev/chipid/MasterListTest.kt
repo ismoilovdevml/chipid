@@ -15,20 +15,21 @@ import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 class MasterListTest {
-    @Test
-    fun parsesSyntheticMasterList() {
-        val a = TestPki.hierarchy("UZ")
-        val b = TestPki.hierarchy("TJ")
-        val signer = TestPki.hierarchy("DE")
+    private val fr = TestPki.hierarchy("FR")
+    private val jp = TestPki.hierarchy("JP")
 
+    /** A master list signed by [signer].dsc, whose issuer is [signer].csca (included in the list). */
+    private fun masterList(signer: TestPki.Hierarchy): ByteArray {
         val certs = ASN1EncodableVector().apply {
-            add(Certificate.getInstance(a.csca.encoded))
-            add(Certificate.getInstance(b.csca.encoded))
+            add(Certificate.getInstance(fr.csca.encoded))
+            add(Certificate.getInstance(jp.csca.encoded))
+            add(Certificate.getInstance(signer.csca.encoded))
         }
         val content = DERSequence(arrayOf(ASN1Integer(0), DERSet(certs))).encoded
         val gen = CMSSignedDataGenerator().apply {
@@ -38,24 +39,40 @@ class MasterListTest {
             )
             addCertificates(JcaCertStore(listOf(signer.dsc)))
         }
-        val cms = gen.generate(
-            CMSProcessableByteArray(ASN1ObjectIdentifier("2.23.136.1.1.2"), content), true,
-        ).encoded
-
-        val ml = MasterList.parse(cms)
-        assertEquals(2, ml.certificates.size)
-        assertTrue(ml.signatureValid)
-        assertEquals(setOf("UZ", "TJ"), ml.countries())
+        return gen.generate(CMSProcessableByteArray(ASN1ObjectIdentifier("2.23.136.1.1.2"), content), true).encoded
     }
 
-    /** Runs only when the bundled BSI list is present; proves Uzbekistan's CSCAs are in it. */
     @Test
-    fun bundledBsiListContainsUzbekistan() {
+    fun parsesSyntheticMasterList() {
+        val de = TestPki.hierarchy("DE")
+        val ml = MasterList.parse(masterList(de), pinnedRoots = setOf(MasterList.spkiSha256(de.csca)))
+        assertEquals(3, ml.certificates.size)
+        assertTrue(ml.signatureValid)
+        assertTrue(ml.signerTrusted)
+        assertEquals(setOf("FR", "JP", "DE"), ml.countries())
+    }
+
+    @Test
+    fun listSignedByUnpinnedAuthorityIsNotTrusted() {
+        // An attacker re-signs the list with their own "CSCA": the CMS signature is intact,
+        // but the signer does not chain to a pinned root.
+        val de = TestPki.hierarchy("DE")
+        val attacker = TestPki.hierarchy("DE")
+        val ml = MasterList.parse(masterList(attacker), pinnedRoots = setOf(MasterList.spkiSha256(de.csca)))
+        assertTrue(ml.signatureValid)
+        assertFalse(ml.signerTrusted)
+    }
+
+    /** Runs only when the fetched BSI list is present: real list, production pins. */
+    @Test
+    fun bundledBsiListChainsToPinnedGermanCsca() {
         val f = File("src/main/assets/masterlist.ml")
         if (!f.exists()) return
         val ml = MasterList.parse(f.readBytes())
         assertTrue(ml.signatureValid)
+        assertTrue(ml.signerTrusted)
         assertTrue(ml.certificates.size > 500)
-        assertTrue(ml.byCountry("UZ").size >= 4)
+        assertTrue(ml.countries().size > 100)
+        assertTrue(ml.byCountry("DE").isNotEmpty())
     }
 }

@@ -20,7 +20,7 @@ import com.ismoilovdev.chipid.core.Check
 import com.ismoilovdev.chipid.reader.TrustStore
 
 @Composable
-fun AboutScreen(trust: TrustStore?, wipeMessage: String?, onBack: () -> Unit, onWipe: () -> Unit) {
+fun AboutScreen(trust: TrustStore?, onBack: () -> Unit) {
     val context = LocalContext.current
     // Read from the installed package, not asserted: proves what the OS will enforce.
     val requested = remember {
@@ -28,13 +28,7 @@ fun AboutScreen(trust: TrustStore?, wipeMessage: String?, onBack: () -> Unit, on
     }
     val noNetwork = Manifest.permission.INTERNET !in requested
 
-    ScreenFrame(
-        gap = 14.dp,
-        bottom = {
-            wipeMessage?.let { Text(it, style = T.tiny) }
-            GhostButton(stringResource(R.string.delete_exports), icon = Ic.trash, onClick = onWipe)
-        },
-    ) {
+    ScreenFrame(gap = 14.dp) {
         TopBar(stringResource(R.string.about_title), left = { RoundIconButton(Ic.back, stringResource(R.string.back), onClick = onBack) })
         Block(stringResource(R.string.about_privacy)) {
             Line(if (noNetwork) Check.PASS else Check.FAIL, stringResource(if (noNetwork) R.string.priv_network_ok else R.string.priv_network_bad))
@@ -46,7 +40,9 @@ fun AboutScreen(trust: TrustStore?, wipeMessage: String?, onBack: () -> Unit, on
             if (trust == null) {
                 Text(stringResource(R.string.loading), style = T.small)
             } else {
+                Line(if (trust.bundledTrusted) Check.PASS else Check.FAIL, stringResource(if (trust.bundledTrusted) R.string.trust_pinned_ok else R.string.trust_pinned_bad))
                 Text(stringResource(R.string.trust_summary, trust.anchors.size, trust.countries), style = T.body.copy(fontSize = 14.sp))
+                if (trust.userAddedCount > 0) Line(Check.UNKNOWN, stringResource(R.string.trust_user_added, trust.userAddedCount))
                 trust.sources.forEach { Text(it, style = T.monoSmall.copy(fontSize = 11.sp, color = C.muted)) }
                 Text(stringResource(R.string.trust_add), style = T.tiny)
             }

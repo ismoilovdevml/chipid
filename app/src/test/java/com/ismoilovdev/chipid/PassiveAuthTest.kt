@@ -30,6 +30,7 @@ class PassiveAuthTest {
         assertEquals(Check.PASS, r.overall)
         assertEquals("SHA-256", r.digestAlgorithm)
         assertTrue(r.cscaSubject!!.contains("CSCA-TEST"))
+        assertEquals(h.csca, r.csca)
     }
 
     @Test
@@ -59,7 +60,7 @@ class PassiveAuthTest {
     fun cscaWithSameNameButWrongKeyFails() {
         val h = TestPki.hierarchy()
         val impostorKeys = TestPki.rsaKeys()
-        val name = "C=UZ, O=TEST, CN=CSCA-TEST" // same DN as the real CSCA, different key
+        val name = "C=UT, O=TEST, CN=CSCA-TEST" // same DN as the real CSCA, different key
         val impostor = TestPki.cert(name, name, impostorKeys.public, impostorKeys.private, ca = true)
         val r = PassiveAuth.verify(goodSod(h), mapOf(1 to dg1, 2 to dg2), listOf(impostor))
 

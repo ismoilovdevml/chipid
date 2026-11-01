@@ -69,6 +69,6 @@ class MrzTest {
 
     @Test
     fun ignoresUnrelatedText() {
-        assertNull(Mrz.find(listOf("REPUBLIC OF UZBEKISTAN", "PASSPORT", "12.03.2020")))
+        assertNull(Mrz.find(listOf("REPUBLIC OF UTOPIA", "PASSPORT", "12.03.2020")))
     }
 }
